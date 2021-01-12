@@ -17,6 +17,23 @@ using namespace dealii;
 namespace Fbar
 {
 	/**
+	 * For F-bar we only need the gradient at the center QP (one QP) to determine the deformation
+	 * gradient at the center "c". Thus, we don't store the gradients and hardcode the number of
+	 * quadrature points to 1
+	 * @ToDo: avoid using the FEextractor maybe use fe_values[u_fe] as input
+	 */
+	template<int dim>
+	void prepare_DefoGradC( FEValues<dim> &fe_values_ref_RI, const Vector<double> &current_solution,
+							Tensor<2,dim> &DeformationGradient_c )
+	 {
+		 // We use a single additional QP at the center for Fbar
+		 std::vector< Tensor<2,dim> > solution_grads_u_RI( 1 );
+		 fe_values_ref_RI[(FEValuesExtractors::Vector) 0].get_function_gradients(current_solution,solution_grads_u_RI);
+
+		 DeformationGradient_c = (Tensor<2, dim>(StandardTensors::I<dim>()) + solution_grads_u_RI[0]);
+	 }
+
+	/**
 	 */
 	double get_vol_part_ratio ( const Tensor<2,3> &F, const Tensor<2,3> &F_c )
 	{
@@ -30,7 +47,7 @@ namespace Fbar
 	{
 		const double vol_part_ratio = get_vol_part_ratio(F,F_c);
 
-		return /*dFbar_dF=*/ - 1./3. * vol_part_ratio * outer_product( F, transpose(invert(F)) )
+		return /*dFbar_dF=*/ - 1./3. * vol_part_ratio * extract_dim<dim>( outer_product( F, transpose(invert(F)) ) )
 							 + vol_part_ratio * StandardTensors::I_unsym_unsym<dim>();
 	}
 	
@@ -41,7 +58,7 @@ namespace Fbar
 	{
 		const double vol_part_ratio = get_vol_part_ratio(F,F_c);
 
-		return /*dFbar_dFc=*/ 1./3. * vol_part_ratio * outer_product( F, transpose(invert(F_c)) );
+		return /*dFbar_dFc=*/ 1./3. * vol_part_ratio * extract_dim<dim>( outer_product( F, transpose(invert(F_c)) ) );
 	}
 
 
@@ -56,7 +73,7 @@ namespace Fbar
 	 * @return
 	 */
 	template <int dim>
-	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<4,dim> &dC_dF, const Tensor<2,3> &F, const Tensor<2,3> &F_c, const Tensor<2,3> &grad_X_N_u_j, const Tensor<2,3> &grad_X_N_u_j_c )
+	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<4,dim> &dC_dF, const Tensor<2,3> &F, const Tensor<2,3> &F_c, const Tensor<2,dim> &grad_X_N_u_j, const Tensor<2,dim> &grad_X_N_u_j_c )
 	{
 		return symmetrize(
 							double_contract<2,0,3,1>( dC_dF,
@@ -71,11 +88,11 @@ namespace Fbar
 	 * @warning Untested
 	 */
 	template <int dim>
-	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<2,3> &F, const Tensor<2,3> &F_c, const Tensor<2,3> &grad_X_N_u_j, const Tensor<2,3> &grad_X_N_u_j_c )
+	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<2,3> &F, const Tensor<2,3> &F_c, const Tensor<2,dim> &grad_X_N_u_j, const Tensor<2,dim> &grad_X_N_u_j_c )
 	{
 		AssertThrow(false, ExcMessage("dC_deltaRCG without dC_dF as argument is currently untested"));
 
-		Tensor<4,dim> dC_dF = StandardTensors::dC_dF<3>( /*Fbar=*/ get_vol_part_ratio(F,F_c) * F );
+		Tensor<4,dim> dC_dF = extract_dim<dim> ( StandardTensors::dC_dF<3>( /*Fbar=*/ get_vol_part_ratio(F,F_c) * F ) );
 		return deltaCbar_deltaRCG( dC_dF, F, F_c, grad_X_N_u_j, grad_X_N_u_j_c );
 	}
 }
