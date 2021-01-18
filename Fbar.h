@@ -41,6 +41,7 @@ namespace Fbar
 	}
 
 	/**
+	 * @todo-optimize Add option to insert the \a vol_part_ratio to save comp. time
 	 */
 	template <int dim>
 	Tensor<4,dim> dFbar_dF ( const Tensor<2,3> &F, const Tensor<2,3> &F_c )
@@ -65,6 +66,8 @@ namespace Fbar
 	/**
 	 * Compute the linearisation \f$ \Delta \bC \f$ of the right Cauchy-Green tensor \f$ \bC \f$
 	 * taking the special setup of the deformation gradient for Fbar into account.
+	 * @warning This variant is also slow, approximately a factor of 3 slower (overall computation time) than the "efficient version" below.
+	 * Because we do the operations for each dof i and j, not just each QP k.
 	 * @param dC_dF The fourth-order tensor describing the derivative of the RCG wrt to the deformation gradient. Can be computed via \code dC_dF = StandardTensors::dC_dF<3>(F) \endcode
 	 * @param F
 	 * @param F_c
@@ -85,6 +88,7 @@ namespace Fbar
 	}
 	/**
 	 * The lazy variant for \a dC_deltaRCG which does not require dC_dF which is however constant for the same QP_k. So, the lazy variant is much slower.
+	 * @warning By "much slower", I mean factors!
 	 * @warning Untested
 	 */
 	template <int dim>
@@ -94,6 +98,26 @@ namespace Fbar
 
 		Tensor<4,dim> dC_dF = extract_dim<dim> ( StandardTensors::dC_dF<3>( /*Fbar=*/ get_vol_part_ratio(F,F_c) * F ) );
 		return deltaCbar_deltaRCG( dC_dF, F, F_c, grad_X_N_u_j, grad_X_N_u_j_c );
+	}
+
+	/**
+	 * Compute the linearisation \f$ \Delta \bC \f$ of the right Cauchy-Green tensor \f$ \bC \f$
+	 * taking the special setup of the deformation gradient for Fbar into account. (The "efficient" version)
+	 * @todo-optimize can we do some faster contraction, if we take the symmetric part in the end anyway?
+	 * @todo Update docu
+	 * @param grad_X_N_u_j
+	 * @param grad_X_N_u_j_c
+	 * @return
+	 */
+	template <int dim>
+	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<4,dim> &dCbar_dF, const Tensor<4,dim> &dCbar_dFc,
+												const Tensor<2,dim> &grad_X_N_u_j, const Tensor<2,dim> &grad_X_N_u_j_c )
+	{
+		return symmetrize(
+							double_contract<2,0,3,1>( dCbar_dF, grad_X_N_u_j )
+							+
+							double_contract<2,0,3,1>( dCbar_dFc,grad_X_N_u_j_c )
+						 );
 	}
 }
 
