@@ -11,8 +11,9 @@
 using namespace dealii;
 
 
-/// @todo Check for 2D and ax and then use Number template
 /**
+ * @todo There still seems to be a problem with convergence
+ * @todo Check for 2D and ax and then use Number template
  */
 namespace Fbar
 {
@@ -120,15 +121,23 @@ namespace Fbar
 							double_contract<2,0,3,1>( dCbar_dFc,grad_X_N_u_j_c )
 						 );
 	}
+	/**
+	 * @BugFix At some point deltaFbar was symmetrized, which is obviously wrong. It it a non-symmetric second order tensor.
+	 * @param dFbar_dF
+	 * @param dFbar_dFc
+	 * @param grad_X_N_u_j
+	 * @param grad_X_N_u_j_c
+	 * @return
+	 */
 	template <int dim>
-	SymmetricTensor<2,dim> deltaFbar ( const Tensor<4,dim> &dFbar_dF, const Tensor<4,dim> &dFbar_dFc,
+	Tensor<2,dim> deltaFbar ( const Tensor<4,dim> &dFbar_dF, const Tensor<4,dim> &dFbar_dFc,
 									   const Tensor<2,dim> &grad_X_N_u_j, const Tensor<2,dim> &grad_X_N_u_j_c )
 	{
-		return symmetrize(
-							double_contract<2,0,3,1>( dFbar_dF, grad_X_N_u_j )
-							+
-							double_contract<2,0,3,1>( dFbar_dFc,grad_X_N_u_j_c )
-						 );
+		return   (
+					double_contract<2,0,3,1>( dFbar_dF, grad_X_N_u_j )
+					+
+					double_contract<2,0,3,1>( dFbar_dFc,grad_X_N_u_j_c )
+				 );
 	}
 }
 
