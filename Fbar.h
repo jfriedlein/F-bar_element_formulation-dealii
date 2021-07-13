@@ -12,6 +12,7 @@ using namespace dealii;
 
 
 /**
+ * Based on "COMPUTATIONAL METHODS FOR PLASTICITY" by Neto and "Regularisation of gradient-enhanced damage coupled to finite plasticity" by Sprave&Menzel
  * @todo There still seems to be a problem with convergence
  * @todo Check for 2D and ax and then use Number template
  */
@@ -43,7 +44,7 @@ namespace Fbar
 	}
 
 	/**
-	 * @todo-optimize Add option to insert the \a vol_part_ratio to save comp. time
+	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv to save comp. time
 	 */
 	template <int dim>
 	Tensor<4,dim> dFbar_dF ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
@@ -55,6 +56,7 @@ namespace Fbar
 	}
 	
 	/**
+	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv to save comp. time
 	 */
 	template <int dim>
 	Tensor<4,dim> dFbar_dFc ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
