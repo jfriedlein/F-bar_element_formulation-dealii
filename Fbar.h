@@ -44,6 +44,14 @@ namespace Fbar
 	}
 
 	/**
+	 */
+	template <int dim>
+	double get_detF0_detF_ratio ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
+	{
+		return /* ratio=*/ determinant(F_c) / determinant(F);
+	}
+
+	/**
 	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv to save comp. time
 	 */
 	template <int dim>
