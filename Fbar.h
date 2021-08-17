@@ -113,8 +113,21 @@ namespace Fbar
 //	}
 
 	/**
+	 * @todo Choose dim=3 for 3D and axisym, whereas dim=2 for 2D-plane strain
+	 * @param DefoGrad_compatible
+	 * @param DeformationGradient_c
+	 * @return
+	 */
+	template <int dim>
+	double get_stress_scaler_PK2(const Tensor<2,dim> &DefoGrad_compatible, const Tensor<2,dim> &DeformationGradient_c )
+	{
+		 return std::pow( get_detF0_detF_ratio( DefoGrad_compatible, DeformationGradient_c ), 2./double(dim)-1. );
+	}
+
+	/**
 	 * Compute the linearisation \f$ \Delta \bC \f$ of the right Cauchy-Green tensor \f$ \bC \f$
 	 * taking the special setup of the deformation gradient for Fbar into account. (The "efficient" version)
+	 * @todo-optimize Can we simply use deltaC=2(F^T*deltaF)^sym?
 	 * @todo-optimize can we do some faster contraction, if we take the symmetric part in the end anyway?
 	 * @todo Update docu
 	 * @param grad_X_N_u_j
@@ -148,6 +161,48 @@ namespace Fbar
 					+
 					double_contract<2,0,3,1>( dFbar_dFc,grad_X_N_u_j_c )
 				 );
+	}
+
+
+	template <int dim>
+	SymmetricTensor<2,dim> deltaS ( const Tensor<4,dim> &dS_hat_dFbar, const Tensor<2,dim> &deltaF, const double &stress_scaler,
+									const Tensor<4,dim> &S_dyadic_F_invT, const Tensor<2,dim> &grad_X_N_u_j,
+									const Tensor<4,dim> &S_dyadic_F0_invT, const Tensor<2,dim> &grad_X_N_u_j_c )
+	{
+		  return /*deltaS=*/ symmetrize( stress_scaler * double_contract<2,0,3,1> (dS_hat_dFbar , deltaF)
+										 + (2./double(dim) - 1.) * (
+																	double_contract<2,0,3,1> ( S_dyadic_F0_invT, grad_X_N_u_j_c)
+																	- double_contract<2,0,3,1> ( S_dyadic_F_invT, grad_X_N_u_j)
+																   )
+									  );
+	}
+	template <int dim>
+	SymmetricTensor<2,dim> deltaS ( const SymmetricTensor<4,dim> &dS_hat_dCbar, const SymmetricTensor<2,dim> &deltaC, const double &stress_scaler,
+									const Tensor<4,dim> &S_dyadic_F_invT, const Tensor<2,dim> &grad_X_N_u_j,
+									const Tensor<4,dim> &S_dyadic_F0_invT, const Tensor<2,dim> &grad_X_N_u_j_c )
+	{
+		  return /*deltaS=*/ symmetrize( stress_scaler * (dS_hat_dCbar * deltaC)
+										 + (2./double(dim) - 1.) * (
+																	double_contract<2,0,3,1> ( S_dyadic_F0_invT, grad_X_N_u_j_c)
+																	- double_contract<2,0,3,1> ( S_dyadic_F_invT, grad_X_N_u_j)
+																   )
+									  );
+	}
+
+	/**
+	 * Two options: Either call with full 3D stress tensor (for 3D or 2D) or with 2D stress for 2D only
+	 * @param PK2_stress
+	 * @param defoGrad
+	 * @return
+	 */
+	template <int dim>
+	Tensor<4,dim> get_S_dyadic_F_invT  ( const SymmetricTensor<2,3> &PK2_stress, const Tensor<2,dim> &defoGrad )
+	{
+		return /*S_dyadic_F0_invT=*/ outer_product( Tensor<2,dim> (extract_dim<dim>(PK2_stress)), transpose(invert(defoGrad)) );
+	}
+	Tensor<4,2> get_S_dyadic_F_invT  ( const SymmetricTensor<2,2> &PK2_stress, const Tensor<2,2> &defoGrad )
+	{
+		return /*S_dyadic_F0_invT=*/ outer_product( Tensor<2,2> (PK2_stress), transpose(invert(defoGrad)) );
 	}
 }
 
