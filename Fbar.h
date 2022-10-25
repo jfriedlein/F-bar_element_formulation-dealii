@@ -19,7 +19,7 @@ using namespace dealii;
 namespace Fbar
 {
 	/**
-	 * For F-bar we only need the gradient at the center QP (one QP) to determine the deformation
+	 * For F-bar we only need the gradient at the center QP (one QP) to determine the volumetric part of deformation
 	 * gradient at the center "c". Thus, we don't store the gradients and hardcode the number of
 	 * quadrature points to 1
 	 * @ToDo: avoid using the FEextractor maybe use fe_values[u_fe] as input
@@ -28,14 +28,20 @@ namespace Fbar
 	void prepare_DefoGradC( FEValues<dim> &fe_values_ref_RI, const Vector<double> &current_solution,
 							Tensor<2,dim> &DeformationGradient_c )
 	 {
-		 // We use a single additional QP at the center for Fbar
+		 // We use a single QP at the center for Fbar
 		 std::vector< Tensor<2,dim> > solution_grads_u_RI( 1 );
 		 fe_values_ref_RI[(FEValuesExtractors::Vector) 0].get_function_gradients(current_solution,solution_grads_u_RI);
 
-		 DeformationGradient_c = (Tensor<2, dim>(StandardTensors::I<dim>()) + solution_grads_u_RI[0]);
+		 DeformationGradient_c = (Tensor<2, dim>(unit_symmetric_tensor<dim>()) + solution_grads_u_RI[0]);
 	 }
 
 	/**
+	 * @brief Get ratio of the volumetric parts of the two given deformation gradients
+	 * 
+	 * @tparam dim 
+	 * @param F 
+	 * @param F_c 
+	 * @return double 
 	 */
 	template <int dim>
 	double get_vol_part_ratio ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
@@ -44,27 +50,62 @@ namespace Fbar
 	}
 
 	/**
+	 * @brief Get the ratio of the determinants of the two given deformation gradients
+	 * 
+	 * @tparam dim 
+	 * @param F 
+	 * @param F_c 
+	 * @return double 
 	 */
 	template <int dim>
 	double get_detF0_detF_ratio ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
 	{
 		return /* ratio=*/ determinant(F_c) / determinant(F);
 	}
-
 	/**
-	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv to save comp. time
+	 * @brief Return the fourth order tangent that results from the derivative of an unsymmetric tensor with itself
+	 * @todo-optimize Yes, this can be done easier and is already available in deal.ii (but nice to see it explicitly)
+	 * 
+	 * @tparam dim 
+	 * @return Tensor<4, dim> 
 	 */
 	template <int dim>
-	Tensor<4,dim> dFbar_dF ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
+	Tensor<4, dim> I_unsym_unsym()
+	{
+		Tensor<4, dim> dF_dF;
+		{
+			for (unsigned int i = 0; i < dim; i++)
+				for (unsigned int j = 0; j < dim; j++)
+					for (unsigned int k = 0; k < dim; k++)
+						for (unsigned int l = 0; l < dim; l++)
+							if (i == k && j == l)
+								dF_dF[i][j][k][l] = 1.;
+		}
+		return dF_dF;
+	}
+	/**
+	 * @brief Derivative of Fbar with respect to F
+	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv as input arguments to save computation time
+	 * @param F
+	 * @param F_c
+	 * @return * template <int dim>
+	 */
+		template <int dim>
+		Tensor<4, dim> dFbar_dF(const Tensor<2, dim> &F, const Tensor<2, dim> &F_c)
 	{
 		const double vol_part_ratio = get_vol_part_ratio(F,F_c);
 
 		return /*dFbar_dF=*/ - 1./double(dim) * vol_part_ratio * outer_product( F, transpose(invert(F)) )
-							 + vol_part_ratio * StandardTensors::I_unsym_unsym<dim>();
+							 + vol_part_ratio * I_unsym_unsym<dim>();
 	}
-	
+
 	/**
-	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv to save comp. time
+	 * @brief Derivative of Fbar with respect to Fc
+	 * @todo-optimize Add option to insert the \a vol_part_ratio and F_inv as input arguments to save computation time
+	 * @tparam dim
+	 * @param F
+	 * @param F_c
+	 * @return Tensor<4,dim>
 	 */
 	template <int dim>
 	Tensor<4,dim> dFbar_dFc ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
@@ -74,45 +115,9 @@ namespace Fbar
 		return /*dFbar_dFc=*/ 1./double(dim) * vol_part_ratio * outer_product( F, transpose(invert(F_c)) );
 	}
 
-
-//	/**
-//	 * Compute the linearisation \f$ \Delta \bC \f$ of the right Cauchy-Green tensor \f$ \bC \f$
-//	 * taking the special setup of the deformation gradient for Fbar into account.
-//	 * @warning This variant is also slow, approximately a factor of 3 slower (overall computation time) than the "efficient version" below.
-//	 * Because we do the operations for each dof i and j, not just each QP k.
-//	 * @param dC_dF The fourth-order tensor describing the derivative of the RCG wrt to the deformation gradient. Can be computed via \code dC_dF = StandardTensors::dC_dF<3>(F) \endcode
-//	 * @param F
-//	 * @param F_c
-//	 * @param grad_X_N_u_j
-//	 * @param grad_X_N_u_j_c
-//	 * @return
-//	 */
-//	template <int dim>
-//	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<4,dim> &dC_dF, const Tensor<2,3> &F, const Tensor<2,3> &F_c, const Tensor<2,dim> &grad_X_N_u_j, const Tensor<2,dim> &grad_X_N_u_j_c )
-//	{
-//		return symmetrize(
-//							double_contract<2,0,3,1>( dC_dF,
-//													  double_contract<2,0,3,1>( dFbar_dF<dim>(F,F_c),grad_X_N_u_j )
-//													  +
-//													  double_contract<2,0,3,1>( dFbar_dFc<dim>(F,F_c),grad_X_N_u_j_c )
-//												     )
-//						 );
-//	}
-//	/**
-//	 * The lazy variant for \a dC_deltaRCG which does not require dC_dF which is however constant for the same QP_k. So, the lazy variant is much slower.
-//	 * @warning By "much slower", I mean factors!
-//	 * @warning Untested
-//	 */
-//	template <int dim>
-//	SymmetricTensor<2,dim> deltaCbar_deltaRCG ( const Tensor<2,3> &F, const Tensor<2,3> &F_c, const Tensor<2,dim> &grad_X_N_u_j, const Tensor<2,dim> &grad_X_N_u_j_c )
-//	{
-//		AssertThrow(false, ExcMessage("dC_deltaRCG without dC_dF as argument is currently untested"));
-//
-//		Tensor<4,dim> dC_dF = extract_dim<dim> ( StandardTensors::dC_dF<3>( /*Fbar=*/ get_vol_part_ratio(F,F_c) * F ) );
-//		return deltaCbar_deltaRCG( dC_dF, F, F_c, grad_X_N_u_j, grad_X_N_u_j_c );
-//	}
-
 	/**
+	 * @brief Compute the scaling factor that is necessary for the PK2 stress
+	 * 
 	 * @todo Choose dim=3 for 3D and axisym, whereas dim=2 for 2D-plane strain
 	 * @param DefoGrad_compatible
 	 * @param DeformationGradient_c
@@ -144,6 +149,7 @@ namespace Fbar
 							double_contract<2,0,3,1>( dCbar_dFc,grad_X_N_u_j_c )
 						 );
 	}
+
 	/**
 	 * @BugFix At some point deltaFbar was symmetrized, which is obviously wrong. It it a non-symmetric second order tensor.
 	 * @param dFbar_dF
@@ -163,7 +169,6 @@ namespace Fbar
 				 );
 	}
 
-
 	template <int dim>
 	SymmetricTensor<2,dim> deltaS ( const Tensor<4,dim> &dS_hat_dFbar, const Tensor<2,dim> &deltaF, const double &stress_scaler,
 									const Tensor<4,dim> &S_dyadic_F_invT, const Tensor<2,dim> &grad_X_N_u_j,
@@ -176,6 +181,7 @@ namespace Fbar
 																   )
 									  );
 	}
+
 	template <int dim>
 	SymmetricTensor<2,dim> deltaS ( const SymmetricTensor<4,dim> &dS_hat_dCbar, const SymmetricTensor<2,dim> &deltaC, const double &stress_scaler,
 									const Tensor<4,dim> &S_dyadic_F_invT, const Tensor<2,dim> &grad_X_N_u_j,
