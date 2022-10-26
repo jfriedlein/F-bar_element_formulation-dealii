@@ -23,25 +23,25 @@ fill this
 1. Declarations
 In your main class (in deal.II it is named for instance "step3" [deal.II step3 tutorial](https://www.dealii.org/current/doxygen/deal.II/step_3.html) where you declare your typical QGauss quadrature rule `qf_cell` for the integration over the cell, add another QGauss rule named `qf_cell_RI`. The latter will describe the reduced integration (RI) that we use to get the quadrature at the element centre. Additionally, declare an FEValues object named `fe_values_ref_RI*  that uses the `qf_cell_RI` rule.
 ```
-	const QGauss<dim> qf_cell;
-	FEValues<dim> fe_values_ref;
-	
-	const QGauss<dim> qf_cell_RI;
-	FEValues<dim> fe_values_ref_RI;
+const QGauss<dim> qf_cell;
+FEValues<dim> fe_values_ref;
+
+const QGauss<dim> qf_cell_RI;
+FEValues<dim> fe_values_ref_RI;
 ```
 
 2. Constructor
 In the constructor for the above main class, we now also have to  initialise the new variables, which we do as follows
 ```
-	...
-	qf_cell( degree +1 ),
-	qf_cell_RI( degree +1 -1 ),
-	fe_values_ref_RI (	fe,//The used FiniteElement
-					            qf_cell_RI,//The quadrature rule for the cell
-					            update_values | //UpdateFlag for shape function values
-					            update_gradients | //shape function gradients
-					            update_JxW_values ), //transformed quadrature weights multiplied with Jacobian of transformation
-	...
+...
+qf_cell( degree +1 ),
+qf_cell_RI( degree +1 -1 ),
+fe_values_ref_RI ( fe,//The used FiniteElement
+                   qf_cell_RI,//The quadrature rule for the cell
+                   update_values | //UpdateFlag for shape function values
+                   update_gradients | //shape function gradients
+                   update_JxW_values ), //transformed quadrature weights multiplied with Jacobian of transformation
+...
 ```
 The standard `qf_cell` is initialised as usual, where `degree` denotes the polynomial order that is used for the element (1: linear element, 2: quadratic element, ...). The reduced integration uses one order less, so we init the `qf_cell_RI` with the order of `qf_cell` minus 1.
 
