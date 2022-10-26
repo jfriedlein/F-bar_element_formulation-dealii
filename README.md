@@ -9,6 +9,14 @@ see book "COMPUTATIONAL METHODS FOR PLASTICITY" by Neto
 
 see papers "DESIGN OF SIMPLE LOW ORDER FINITE ELEMENTS FOR LARGE STRAIN ANALYSIS OF NEARLY INCOMPRESSIBLE SOLIDS_Neto_Dutko_Owen" and "F-bar-based linear triangles and tetrahedra for finite strain analysis of nearly incompressible solids. Part I - formulation and benchmarking_Neto_Owen"
 
+1. Modify the deformation gradient of the standard quadrature points by the volumetric part of the centre quadrature point
+2. Call the material model with the modified deformation gradient
+3. Scale the resulting stress if necessary
+4. Correctly use the deformation gradients and stress for the residual and tangents
+
+## Benchmark
+"necking of a rod" is well suited, with highly refined elements in the notch with bad aspects ratios SRI shows hourglassing and only F-bar with the correct stress scaling does resolve the hourglassing
+
 ## Argument list
 fill this
 
