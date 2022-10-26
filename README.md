@@ -7,6 +7,8 @@ https://github.com/jfriedlein/selective_reduced_integration_SRI-dealii
 ## Background
 see book "COMPUTATIONAL METHODS FOR PLASTICITY" by Neto
 
+see papers "DESIGN OF SIMPLE LOW ORDER FINITE ELEMENTS FOR LARGE STRAIN ANALYSIS OF NEARLY INCOMPRESSIBLE SOLIDS_Neto_Dutko_Owen" and "F-bar-based linear triangles and tetrahedra for finite strain analysis of nearly incompressible solids. Part I - formulation and benchmarking_Neto_Owen"
+
 ## Argument list
 fill this
 
@@ -32,7 +34,7 @@ In your main class (in deal.II it is named for instance "step3" [deal.II step3 t
 In the constructor for the above main class, we now also have to  initialise the new variables, which we do as follows
 ```
 	...
-  qf_cell( degree +1 ),
+	qf_cell( degree +1 ),
 	qf_cell_RI( degree +1 -1 ),
 	fe_values_ref_RI (	fe,//The used FiniteElement
 					            qf_cell_RI,//The quadrature rule for the cell
@@ -96,7 +98,7 @@ Next, we prepare some more contributions to the tangent, again as early as possi
 ```
 For the computation of the linearisation we also need the gradient of the shape function at the centre QP for the j-th dof.
 ```
-...
+      ...
       for(unsigned int i=0; i<dofs_per_cell; ++i) {
       ... computing the residual ...
          for(unsigned int j=0; j<dofs_per_cell; ++j) {
