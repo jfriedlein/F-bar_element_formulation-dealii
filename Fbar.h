@@ -58,7 +58,7 @@ namespace Fbar
 	 * @return double 
 	 */
 	template <int dim>
-	double get_detF0_detF_ratio ( const Tensor<2,dim> &F, const Tensor<2,dim> &F_c )
+	double get_detF0_detF_ratio ( const Tensor<2,dim> &F_c, const Tensor<2,dim> &F )
 	{
 		return /* ratio=*/ determinant(F_c) / determinant(F);
 	}
@@ -126,7 +126,7 @@ namespace Fbar
 	template <int dim>
 	double get_stress_scaler_PK2(const Tensor<2,dim> &DefoGrad_compatible, const Tensor<2,dim> &DeformationGradient_c )
 	{
-		 return std::pow( get_detF0_detF_ratio( DefoGrad_compatible, DeformationGradient_c ), 2./double(dim)-1. );
+		 return std::pow( get_detF0_detF_ratio( DeformationGradient_c, DefoGrad_compatible ), 2./double(dim) - 1. );
 	}
 
 	/**
