@@ -1,8 +1,8 @@
 # F-bar_element_formulation-dealii
 Functions to implement volumetric locking-free elements using the F-bar element formulation in deal.II
 
-will be documented soon together with a "how to use" code and maybe even some benchmarks, meanwhile you can check out selective reduced integration that also alleviates volumetric locking
-https://github.com/jfriedlein/selective_reduced_integration_SRI-dealii
+You can check out selective reduced integration (SRI) that also alleviates volumetric locking (https://github.com/jfriedlein/selective_reduced_integration_SRI-dealii). However, there are some conceptual differences. For instance, SRI requires the material model to be splitable into volumetric and deviatoric parts. This means for instance that the computation of the triaxiality or any pressure-related quantity inside the material model is wrong and still shows locking. Only during the assembly routine SRI "removes" the volumetric locking. However, hourglassing might occur, for instance for fine meshes using the "necking of a rod" benchmark.
+F-bar, on the other hand, "removes" volumetric locking in the input deformation gradient for the material model. Thus, inside the material model also pressure-related quantities are "locking-free". Moreover, spurious hourglassing, for instance for the "necking of a rod" benchmark, is not present. However, the F-bar formulation leads to an unsymmetric stiffness matrix, thus usually an unsymmetric solver is necessary.
 
 ## Background
 see book "COMPUTATIONAL METHODS FOR PLASTICITY" by Neto
@@ -13,12 +13,13 @@ see papers "DESIGN OF SIMPLE LOW ORDER FINITE ELEMENTS FOR LARGE STRAIN ANALYSIS
 2. Call the material model with the modified deformation gradient
 3. Scale the resulting stress if necessary
 4. Correctly use the deformation gradients and stress for the residual and tangents
+5. Consider the modified deformation gradient in the linearisation. (Be aware that the resulting stiffness matrix is unsymmetric)
 
 ## Benchmark
 "necking of a rod" is well suited, with highly refined elements in the notch with bad aspects ratios SRI shows hourglassing and only F-bar with the correct stress scaling does resolve the hourglassing
 
 ## Argument list
-fill this
+@todo finish this
 
 * FEValues<dim> fe_values_ref; // The FEValues element that corresponds to the displacement dofs
 * Tensor<2,dim> DeformationGradient_c; // deformation gradient at the centre of an element, unsymmetric second order tensor
@@ -26,7 +27,6 @@ fill this
 	
 
 ## Implementation/Usage: Modifying and extending your existing code
-
 
 1. Declarations
 In your main class (in deal.II it is named for instance "step3" [deal.II step3 tutorial](https://www.dealii.org/current/doxygen/deal.II/step_3.html) where you declare your typical QGauss quadrature rule `qf_cell` for the integration over the cell, add another QGauss rule named `qf_cell_RI`. The latter will describe the reduced integration (RI) that we use to get the quadrature at the element centre. Additionally, declare an FEValues object named `fe_values_ref_RI*  that uses the `qf_cell_RI` rule.
